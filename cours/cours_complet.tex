@@ -1,0 +1,362 @@
+\documentclass[a4paper,12pt]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\geometry{hmargin=2.5cm,vmargin=2.5cm}
+\usepackage{graphicx}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{color}
+\usepackage{tikz}
+\usetikzlibrary{shapes, arrows, positioning, fit, calc, automata, matrix}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{enumitem}
+\tcbuselibrary{skins, breakable}
+
+% Configuration des boites
+\newtcolorbox{mathdef}[2][]{
+    colback=white,
+    colframe=black!75!white,
+    fonttitle=\bfseries,
+    title=Formalisme Mathématique : #2,
+    breakable,
+    #1
+}
+
+\newtcolorbox{intuition}[2][]{
+    colback=blue!5!white,
+    colframe=blue!75!black,
+    fonttitle=\bfseries,
+    title=Intuition \& Compréhension : #2,
+    breakable,
+    #1
+}
+
+\newtcolorbox{exemple}[2][]{
+    colback=green!5!white,
+    colframe=green!60!black,
+    fonttitle=\bfseries,
+    title=Exemple Concret : #2,
+    breakable,
+    #1
+}
+
+% Couleurs pour le code
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+\title{\textbf{Cours Magistral Complet}\\Apprentissage par Renforcement (Reinforcement Learning)}
+\author{M1 Intelligence Artificielle}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\chapter{Introduction au Reinforcement Learning}
+
+\section{Le Concept Fondamental}
+L'Apprentissage par Renforcement (ou \textit{Reinforcement Learning} - RL) est l'un des trois paradigmes majeurs du Machine Learning. Contrairement aux approches classiques où l'on fournit des données corrigées à la machine, le RL s'intéresse à la \textbf{prise de décision séquentielle}.
+
+Le principe est inspiré de la psychologie comportementale : une entité (l'\textbf{Agent}) apprend à agir dans un monde (l'\textbf{Environnement}) en observant les conséquences de ses actions.
+\begin{itemize}
+    \item Si l'issue est positive, l'action est renforcée (récompensée).
+    \item Si l'issue est négative, l'action est découragée (punie).
+\end{itemize}
+
+\begin{intuition}{L'Analogie de l'Enfant}
+Imaginez un enfant apprenant à marcher. Personne ne lui donne une équation différentielle de la gravité ou ne lui dit "contracte le muscle quadriceps de 12\%". L'enfant essaie de se lever, tombe (douleur/échec), essaie de modifier son appui, réussit à tenir debout (joie/succès).
+C'est exactement ce que fait un agent RL : il apprend par \textbf{essais et erreurs} (Trial and Error).
+\end{intuition}
+
+\section{Comparaison avec les Autres Paradigmes}
+Il est crucial de situer le RL par rapport aux autres méthodes d'IA pour comprendre sa spécificité.
+
+\subsection{Vs Apprentissage Supervisé (Supervised Learning)}
+En apprentissage supervisé (ex: classification d'images), un "professeur" fournit la réponse correcte pour chaque exemple (Image de chat $\to$ Label "Chat"). L'objectif est de minimiser l'erreur entre la prédiction et la vérité terrain.
+\begin{itemize}
+    \item \textbf{Supervisé} : "Voici la bonne réponse, apprends-la."
+    \item \textbf{RL} : "Voici une note sur 20 après que tu aies agi. Débrouille-toi pour comprendre ce qui était bien ou mal."
+\end{itemize}
+Le RL est plus difficile car le signal de feedback (la récompense) est souvent \textbf{rare} et \textbf{retardé}. Si vous jouez aux échecs, vous ne savez si votre premier coup était bon qu'à la toute fin de la partie.
+
+\subsection{Vs Apprentissage Non-Supervisé (Unsupervised Learning)}
+L'apprentissage non-supervisé cherche des structures cachées dans des données (clustering). Le RL, lui, a un but explicite : \textbf{maximiser une récompense}. Il ne cherche pas juste à comprendre les données, il cherche à \textbf{contrôler} un processus.
+
+\section{Le Cycle d'Interaction Agent-Environnement}
+Tout problème de RL se formalise par une boucle de rétroaction infinie entre deux entités.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[node distance=4cm, auto, >=latex, thick]
+    \node [draw, rectangle, minimum width=3cm, minimum height=1.5cm, fill=blue!10, rounded corners] (agent) {\Large \textbf{Agent}};
+    \node [draw, rectangle, minimum width=3cm, minimum height=1.5cm, fill=green!10, rounded corners, below=of agent] (env) {\Large \textbf{Environnement}};
+    
+    % Flèche Action
+    \draw [->, ultra thick, blue] (agent.east) -- ++(1,0) |- node[pos=0.25] {\textbf{Action} $A_t$} (env.east);
+    \node[right=0.5cm of agent, text width=4cm, align=left, font=\small, color=blue] {L'agent agit sur le monde pour tenter de le modifier.};
+
+    % Flèche Etat/Reward
+    \draw [->, ultra thick, red] (env.west) -- ++(-1,0) |- node[pos=0.25, align=center] {\textbf{État} $S_{t+1}$ \\ \textbf{Récompense} $R_{t+1}$} (agent.west);
+    \node[left=0.5cm of env, text width=4cm, align=right, font=\small, color=red] {Le monde répond par une nouvelle situation et un score.};
+\end{tikzpicture}
+\caption{La boucle Agent-Environnement. À chaque pas de temps $t$, l'agent reçoit $S_t$, joue $A_t$, et reçoit $R_{t+1}, S_{t+1}$.}
+\end{figure}
+
+L'hypothèse fondamentale est que l'agent n'a pas le contrôle total sur l'environnement (il y a une part d'incertitude), mais il peut l'influencer.
+
+\chapter{Formalisation Mathématique : Les MDP}
+
+Pour résoudre informatiquement ces problèmes, nous devons définir un cadre mathématique rigoureux. Ce cadre est le \textbf{Processus de Décision de Markov} (Markov Decision Process - MDP).
+
+\section{Définition d'un MDP}
+Un MDP est défini par un tuple de 5 éléments : $(S, A, P, R, \gamma)$. Détaillons chacun d'eux avec précision.
+
+\begin{mathdef}{Composants du MDP}
+\begin{enumerate}
+    \item \textbf{$S$ (State Space)} : L'ensemble de tous les états possibles. C'est la description complète de la situation à un instant $t$. Ex: La position de toutes les pièces sur un échiquier.
+    \item \textbf{$A$ (Action Space)} : L'ensemble de toutes les actions que l'agent peut effectuer. Ex: "Bouger Pion A en C3".
+    \item \textbf{$P$ (Probabilité de Transition)} : La dynamique du monde. C'est la probabilité de passer de l'état $s$ à l'état $s'$ en ayant fait l'action $a$.
+    \[ P(s'|s,a) = \mathbb{P}(S_{t+1}=s' | S_t=s, A_t=a) \]
+    Ceci modélise l'incertitude (le vent qui dévie le robot, l'adversaire aux échecs...).
+    \item \textbf{$R$ (Fonction de Récompense)} : Le feedback immédiat reçu après une action.
+    \[ R(s,a) = \mathbb{E}[R_{t+1} | S_t=s, A_t=a] \]
+    \item \textbf{$\gamma$ (Facteur d'Escompte / Discount Factor)} : Un nombre entre $0$ et $1$ qui détermine l'importance du futur.
+\end{enumerate}
+\end{mathdef}
+
+\section{La Propriété de Markov}
+Pourquoi appelle-t-on cela "Markovien" ? C'est une hypothèse simplificatrice très forte mais nécessaire.
+Un état est dit \textbf{Markov} si "le futur est indépendant du passé sachant le présent".
+
+Autrement dit, pour prendre la bonne décision, l'agent a juste besoin de connaître l'état actuel $S_t$. Il n'a pas besoin de se souvenir de tout l'historique $S_0, S_1, \dots$. L'état actuel résume toute l'information utile.
+\[ \mathbb{P}(S_{t+1} | S_t) = \mathbb{P}(S_{t+1} | S_1, S_2, \dots, S_t) \]
+
+\section{L'Objectif : Le Retour (Return)}
+Le but de l'agent n'est pas de maximiser la récompense immédiate (sinon il ne ferait jamais d'effort dont la récompense est lointaine, comme étudier pour un examen). Son but est de maximiser la somme cumulée des récompenses sur le long terme.
+
+On appelle cette somme le \textbf{Retour} ($G_t$).
+
+\begin{mathdef}{Le Retour Escompté (Discounted Return)}
+\[ G_t = R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \dots = \sum_{k=0}^{\infty} \gamma^k R_{t+k+1} \]
+Le facteur $\gamma$ est crucial :
+\begin{itemize}
+    \item Si $\gamma \to 0$ : L'agent est "myope". Il ne s'intéresse qu'à $R_{t+1}$.
+    \item Si $\gamma \to 1$ : L'agent est "prévoyant". Il accorde autant d'importance au futur lointain qu'au présent.
+\end{itemize}
+Mathématiquement, $\gamma < 1$ assure aussi que la somme infinie converge vers une valeur finie.
+\end{mathdef}
+
+\chapter{Politiques et Fonctions de Valeur}
+
+C'est le cœur de la théorie du RL. Comment quantifier si une situation est "bonne" ou "mauvaise" ?
+
+\section{La Politique (Policy $\pi$)}
+La politique est le "cerveau" de l'agent. C'est la fonction qui décide quelle action prendre dans un état donné.
+
+\begin{itemize}
+    \item \textbf{Politique Déterministe} : $a = \pi(s)$. Pour un état donné, l'action est toujours la même.
+    \item \textbf{Politique Stochastique} : $\pi(a|s) = \mathbb{P}(A_t=a | S_t=s)$. L'agent choisit une action selon une probabilité. (Ex: 80\% Avancer, 20\% Reculer). C'est crucial pour l'exploration.
+\end{itemize}
+
+L'objectif du RL est de trouver la \textbf{Politique Optimale $\pi^*$} qui maximise le retour espéré.
+
+\section{Les Fonctions de Valeur (Value Functions)}
+Pour trouver la meilleure politique, l'agent doit être capable d'estimer la "valeur" de chaque état. Il existe deux fonctions fondamentales pour cela.
+
+\subsection{1. La State-Value Function $V^\pi(s)$}
+La fonction $V^\pi(s)$ répond à la question : \textbf{"Si je suis dans l'état $s$ et que je continue avec ma stratégie habituelle $\pi$, combien de points je vais gagner en moyenne jusqu'à la fin ?"}
+
+\[ V^\pi(s) = \mathbb{E}_{\pi} [G_t | S_t = s] \]
+
+\subsection{2. La Action-Value Function $Q^\pi(s,a)$}
+La fonction $Q^\pi(s,a)$ est plus précise. Elle répond à : \textbf{"Si je suis dans l'état $s$, que je force l'action $a$ maintenant (même si ma politique disait autre chose), et qu'ensuite je reprends ma stratégie habituelle $\pi$, combien je gagne ?"}
+
+\[ Q^\pi(s,a) = \mathbb{E}_{\pi} [G_t | S_t = s, A_t = a] \]
+
+Cette fonction $Q$ est fondamentale pour les algorithmes \textit{Model-Free} (comme le Q-Learning) car elle permet de comparer les actions directement sans connaître la dynamique de l'environnement.
+
+\section{L'Équation de Bellman}
+Richard Bellman (1957) a formulé une récursivité qui est la clé de tout le RL.
+L'idée est simple : La valeur d'un état est égale à la récompense immédiate plus la valeur de l'état suivant (pondérée par $\gamma$).
+
+\begin{mathdef}{Équation de Bellman pour $V^\pi$}
+\[ V^\pi(s) = \sum_{a} \pi(a|s) \sum_{s', r} P(s'|s,a) \left[ r + \gamma V^\pi(s') \right] \]
+\end{mathdef}
+
+\textbf{Interprétation pas à pas :}
+\begin{enumerate}
+    \item $\sum_{a} \pi(a|s)$ : On fait la moyenne sur toutes les actions que je pourrais choisir.
+    \item $\sum_{s'} P(s'|s,a)$ : On fait la moyenne sur tous les états où cette action pourrait m'anener (car l'environnement est incertain).
+    \item $r + \gamma V^\pi(s')$ : C'est le score total = mon gain immédiat + la valeur de ma future destination.
+\end{enumerate}
+
+Cela nous permet aussi de lier $V$ et $Q$ :
+\[ V^\pi(s) = \sum_{a \in A} \pi(a|s) Q^\pi(s,a) \]
+
+\chapter{Résolution "Model-Based" (Programmation Dynamique)}
+
+Si l'agent connaît parfaitement le modèle du monde (il connaît les fonctions $P$ et $R$), le problème est "résolu" théoriquement. Il n'a pas besoin d'explorer, il peut juste \textit{calculer} la solution. On appelle cela la \textbf{Programmation Dynamique}.
+
+Il existe deux algorithmes principaux.
+
+\section{Algorithme 1 : Policy Iteration}
+Le principe est d'alterner entre deux phases jusqu'à converger vers la politique optimale.
+
+\begin{enumerate}
+    \item \textbf{Policy Evaluation (Évaluation)} : On fixe la politique $\pi$. On calcule sa valeur $V^\pi(s)$ précise pour tous les états (en résolvant le système d'équations de Bellman).
+    \item \textbf{Policy Improvement (Amélioration)} : On regarde les valeurs calculées. Pour chaque état, on change la politique pour choisir l'action qui donne le meilleur résultat immédiat (Greedy) selon $V^\pi$. $\pi_{new}(s) = \arg\max_a Q^\pi(s,a)$.
+\end{enumerate}
+On boucle : Évaluer $\to$ Améliorer $\to$ Évaluer $\to$ Améliorer... Jusqu'à ce que la politique ne change plus.
+
+\section{Algorithme 2 : Value Iteration}
+Parfois, évaluer parfaitement la politique (étape 1) est trop long. L'algorithme \textit{Value Iteration} raccourcit le processus en combinant les deux étapes.
+Au lieu d'attendre l'évaluation complète, on met à jour la valeur $V(s)$ en utilisant directement l'équation d'optimalité de Bellman (avec le $\max$) à chaque étape.
+
+\[ V_{k+1}(s) \leftarrow \max_a \sum_{s', r} P(s'|s,a) [r + \gamma V_k(s')] \]
+
+C'est souvent plus rapide et plus simple à implémenter.
+
+\chapter{Résolution "Model-Free" (Apprentissage Réel)}
+
+Dans la vraie vie, on ne connaît pas les probabilités de transition $P$. On ne peut pas calculer d'espérances. On doit \textbf{apprendre en agissant}.
+C'est le domaine du \textbf{Model-Free RL}.
+
+\section{Monte Carlo vs Temporal Difference (TD)}
+Il y a deux façons d'apprendre sans modèle :
+
+\begin{description}
+    \item[Monte Carlo (MC)] L'agent joue un épisode complet jusqu'à la fin (Game Over). Il regarde le score total obtenu ($G_t$). Il met à jour les états visités en disant "Tiens, cet état m'a mené à une victoire, je vais augmenter sa valeur".
+    \[ V(S_t) \leftarrow V(S_t) + \alpha [ G_t - V(S_t) ] \]
+    \textit{Problème : Il faut attendre la fin de l'épisode (impossible pour les tâches continues) et la variance est élevée.}
+
+    \item[Temporal Difference (TD)] L'agent n'attend pas la fin. Il fait un pas, reçoit une récompense $R_{t+1}$, se retrouve en $S_{t+1}$, et utilise sa propre estimation actuelle de $V(S_{t+1})$ pour mettre à jour $V(S_t)$. C'est le principe du \textbf{Bootstrapping} (apprendre d'une estimation).
+    \[ V(S_t) \leftarrow V(S_t) + \alpha [ \underbrace{R_{t+1} + \gamma V(S_{t+1})}_{\text{Cible TD}} - V(S_t) ] \]
+    \textit{Avantage : Apprentissage pas-à-pas, très efficace.}
+\end{description}
+
+\section{Algorithmes de Contrôle (Q-Learning et SARSA)}
+Le but est d'apprendre les $Q(s,a)$ pour déduire la meilleure action $\max_a Q(s,a)$.
+
+\subsection{SARSA (On-Policy)}
+SARSA pour (State-Action-Reward-State-Action).
+L'agent apprend la valeur de la politique qu'il est en train de suivre \textit{réellement}, y compris ses erreurs d'exploration.
+\[ Q(S,A) \leftarrow Q(S,A) + \alpha [ R + \gamma Q(S', A') - Q(S,A) ] \]
+L'action $A'$ est celle que l'agent va vraiment faire au tour suivant.
+
+\subsection{Q-Learning (Off-Policy)}
+C'est l'algorithme le plus célèbre. L'agent apprend la valeur de la politique \textbf{optimale}, peu importe ce qu'il fait dans la réalité.
+Pour la mise à jour, il ne regarde pas l'action $A'$ qu'il va faire, mais la \textbf{meilleure action possible} $\max_{a'} Q(S', a')$.
+\[ Q(S,A) \leftarrow Q(S,A) + \alpha [ R + \gamma \max_{a'} Q(S', a') - Q(S,A) ] \]
+C'est très puissant car même si l'agent explore au hasard, il apprend la stratégie parfaite en arrière-plan.
+
+\chapter{Le Dilemme Exploration-Exploitation}
+
+C'est défi fondamental du RL. En arrivant dans un restaurant :
+\begin{itemize}
+    \item \textbf{Exploitation} : Vous commandez votre plat préféré. Vous êtes sûr d'avoir un bon repas (maximisation immédiate), mais vous ne découvrirez jamais ce qu'il y a d'autre.
+    \item \textbf{Exploration} : Vous commandez un plat au hasard. Vous risquez d'être déçu (reward négatif), mais vous pourriez découvrir un plat encore meilleur (découverte de l'optimum global).
+\end{itemize}
+
+Si on ne fait que l'Exploitation, on reste bloqué dans une solution sub-optimale. Si on ne fait que l'Exploration, on ne gagne jamais de points.
+
+\section{La Solution : Epsilon-Greedy}
+La méthode standard est d'utiliser un paramètre $\epsilon$ (epsilon).
+\begin{itemize}
+    \item Avec une probabilité $\epsilon$, l'agent choisit une action totalement \textbf{aléatoire}.
+    \item Avec une probabilité $1-\epsilon$, l'agent choisit l'action qu'il pense être la meilleure (\textbf{greedy}).
+\end{itemize}
+Généralement, on utilise un \textbf{Epsilon Decay} : on commence avec $\epsilon=1$ (exploration totale) au début de l'apprentissage, et on le diminue progressivement vers $0.01$ pour laisser place à l'exploitation une fois que l'agent est entraîné.
+
+\chapter{Mise en Pratique : Code Commenté}
+
+Voici une implémentation complète de Q-Learning sur l'environnement "FrozenLake" de la librairie Gymnasium.
+
+\begin{lstlisting}[language=Python]
+import gymnasium as gym
+import numpy as np
+
+# 1. Création de l'environnement
+# FrozenLake : Une grille glissante. But : aller de S à G sans tomber dans les trous H.
+# is_slippery=True rend l'environnement stochastique (transitions incertaines)
+env = gym.make("FrozenLake-v1", is_slippery=True)
+
+# 2. Initialisation de la Q-Table
+# Une matrice de taille [Nb_Etats, Nb_Actions] initialisée à 0
+q_table = np.zeros((env.observation_space.n, env.action_space.n))
+
+# 3. Hyperparamètres
+alpha = 0.1        # Learning Rate (Vitesse d'apprentissage)
+gamma = 0.99       # Discount Factor (Importance du futur)
+epsilon = 1.0      # Exploration Rate (100% aléatoire au début)
+epsilon_decay = 0.995 # On réduit l'exploration de 0.5% à chaque épisode
+min_epsilon = 0.01
+
+episodes = 2000
+
+for episode in range(episodes):
+    state, info = env.reset() # On remet l'agent au départ
+    done = False
+    
+    while not done:
+        # --- Stratégie Epsilon-Greedy ---
+        if np.random.rand() < epsilon:
+            action = env.action_space.sample() # Exploration (Hasard)
+        else:
+            action = np.argmax(q_table[state, :]) # Exploitation (Meilleur connu)
+
+        # --- Interaction avec l'environnement ---
+        next_state, reward, terminated, truncated, info = env.step(action)
+        
+        # --- Mise à jour Q-Learning (Formule Mathématique) ---
+        # On regarde quelle est la valeur MAX possible au prochain état
+        max_next_q = np.max(q_table[next_state, :])
+        
+        # La valeur actuelle
+        current_q = q_table[state, action]
+        
+        # Le calcul de l'erreur et la mise à jour
+        # Q(s,a) = Q(s,a) + alpha * (Reward + gamma * max(Q(s')) - Q(s,a))
+        new_q = current_q + alpha * (reward + gamma * max_next_q - current_q)
+        
+        q_table[state, action] = new_q
+        
+        # On avance
+        state = next_state
+        done = terminated or truncated
+
+    # À la fin de l'épisode, on réduit epsilon
+    epsilon = max(min_epsilon, epsilon * epsilon_decay)
+
+print("Apprentissage terminé !")
+print(q_table)
+\end{lstlisting}
+
+\end{document}
