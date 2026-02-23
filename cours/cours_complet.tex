@@ -203,46 +203,117 @@ La fonction $Q^\pi(s,a)$ est plus précise. Elle répond à : \textbf{"Si je sui
 
 Cette fonction $Q$ est fondamentale pour les algorithmes \textit{Model-Free} (comme le Q-Learning) car elle permet de comparer les actions directement sans connaître la dynamique de l'environnement.
 
-\section{L'Équation de Bellman}
-Richard Bellman (1957) a formulé une récursivité qui est la clé de tout le RL.
-L'idée est simple : La valeur d'un état est égale à la récompense immédiate plus la valeur de l'état suivant (pondérée par $\gamma$).
+\section{Les Équations de Bellman}
+Richard Bellman (1957) a formulé une récursivité qui est la clé de tout le RL. Il est fondamental de distinguer deux types d'équations.
 
-\begin{mathdef}{Équation de Bellman pour $V^\pi$}
-\[ V^\pi(s) = \sum_{a} \pi(a|s) \sum_{s', r} P(s'|s,a) \left[ r + \gamma V^\pi(s') \right] \]
+\subsection{Équation de Bellman pour $V^\pi$ (Expectation Equation)}
+Cette équation décrit la valeur d'un état \textbf{sous une politique donnée} $\pi$. Elle est linéaire (une simple moyenne pondérée).
+\begin{mathdef}{Bellman Expectation Equation}
+\[ V^\pi(s) = \sum_{a \in A} \pi(a|s) \sum_{s' \in S} P(s'|s,a) \left[ R(s,a,s') + \gamma V^\pi(s') \right] \]
 \end{mathdef}
+Elle signifie : "Ma valeur actuelle est la moyenne de ce que je vais gagner tout de suite + la valeur de là où j'atterris".
 
-\textbf{Interprétation pas à pas :}
-\begin{enumerate}
-    \item $\sum_{a} \pi(a|s)$ : On fait la moyenne sur toutes les actions que je pourrais choisir.
-    \item $\sum_{s'} P(s'|s,a)$ : On fait la moyenne sur tous les états où cette action pourrait m'anener (car l'environnement est incertain).
-    \item $r + \gamma V^\pi(s')$ : C'est le score total = mon gain immédiat + la valeur de ma future destination.
-\end{enumerate}
+\subsection{Équation de Bellman pour $V^*$ (Optimality Equation)}
+Cette équation décrit la valeur de l'état \textbf{si on joue parfaitement}. Elle contient un opérateur \textbf{max}, ce qui la rend non-linéaire.
+\begin{mathdef}{Bellman Optimality Equation}
+\[ V^*(s) = \max_{a \in A} \sum_{s' \in S} P(s'|s,a) \left[ R(s,a,s') + \gamma V^*(s') \right] \]
+\end{mathdef}
+Elle signifie : "La valeur optimale d'un état est le gain que je peux espérer si je choisis la \textit{meilleure} action possible à partir de maintenant."
+C'est cette équation que l'on cherche à résoudre pour "gagner" le jeu.
 
-Cela nous permet aussi de lier $V$ et $Q$ :
-\[ V^\pi(s) = \sum_{a \in A} \pi(a|s) Q^\pi(s,a) \]
+Le lien entre $V^*$ et $Q^*$ est immédiat :
+\[ V^*(s) = \max_{a} Q^*(s,a) \]
 
 \chapter{Résolution "Model-Based" (Programmation Dynamique)}
 
-Si l'agent connaît parfaitement le modèle du monde (il connaît les fonctions $P$ et $R$), le problème est "résolu" théoriquement. Il n'a pas besoin d'explorer, il peut juste \textit{calculer} la solution. On appelle cela la \textbf{Programmation Dynamique}.
+Si l'agent connaît parfaitement le modèle du monde (il connaît les fonctions de transition $P$ et de récompense $R$), il n'a pas besoin d'explorer physiquement. Il peut planifier. C'est le domaine de la \textbf{Programmation Dynamique (DP)}.
+Le principe est de décomposer le problème complexe en sous-problèmes récursifs (les états).
 
-Il existe deux algorithmes principaux.
+\section{Exemple Illustratif : Le Monde A-B-C}
+Considérons un mini-monde à 3 états pour illustrer les calculs.
+\begin{center}
+\begin{tikzpicture}[->, >=latex, shorten >=1pt, auto, node distance=2.5cm, semithick]
+    \node[state] (A) {A};
+    \node[state] (B) [right of=A] {B};
+    \node[state] (C) [right of=B] {C};
 
-\section{Algorithme 1 : Policy Iteration}
-Le principe est d'alterner entre deux phases jusqu'à converger vers la politique optimale.
+    \path (A) edge [loop above] node {a0 (0.9)} (A)
+              edge [bend left] node {a1 (0.0)} (B)
+          (B) edge [bend left] node {a1 (0.0)} (C)
+              edge [loop above] node {a0 (0.0)} (B)
+          (C) edge [loop above] node {End (1.0)} (C);
+\end{tikzpicture}
+\end{center}
+\textit{Légende : État A, B, C. Flèches = Actions. (x) = Probabilité ou Récompense.}
+
+\section{Algorithme 1 : Value Iteration}
+Le but est de trouver $V^*(s)$ directement en appliquant l'équation d'optimalité de Bellman de manière itérative. On transforme l'égalité en une règle de mise à jour.
+
+\begin{mathdef}{Règle de Mise à jour (Value Iteration)}
+\[ V_{k+1}(s) \leftarrow \max_{a \in A} \sum_{s'} P(s'|s,a) [R(s,a,s') + \gamma V_k(s')] \]
+\end{mathdef}
+
+\subsection*{Exemple de Calcul Pas-à-Pas}
+Supposons $\gamma=0.9$ et initialisons $V_0(s) = 0$ pour tout $s$.
+\textbf{Objectif} : Atteindre C (Reward=1) depuis A.
+\begin{itemize}
+    \item \textbf{Itération 1} :
+    Pour l'état C (But), disons qu'il donne une récompense de 1.
+    \[ V_1(C) = 1 + 0.9 \times 0 = 1 \]
+    Pour A et B, sans récompense immédiate, ça reste 0.
+    
+    \item \textbf{Itération 2} :
+    L'état B peut aller vers C.
+    \[ V_2(B) = \max( P(C|B, a1)[R + \gamma V_1(C)] ) = 1.0 \times [0 + 0.9 \times 1] = 0.9 \]
+    L'état A ne voit pas encore C. $V_2(A) = 0$.
+    
+    \item \textbf{Itération 3} :
+    L'état A peut aller vers B.
+    \[ V_3(A) = \max( P(B|A, a1)[R + \gamma V_2(B)] ) = 1.0 \times [0 + 0.9 \times 0.9] = 0.81 \]
+\end{itemize}
+On voit que l'information de la récompense se propage ("backpropagates") depuis le but vers les états précédents à chaque itération.
+Après convergence, $V(A)=0.81, V(B)=0.9, V(C)=1$. La politique optimale est évidente : suivre le gradient de valeur (A vers B vers C).
+
+\section{Algorithme 2 : Policy Iteration}
+Parfois, chercher la valeur précise ($\epsilon$-convergence) est trop long alors que la politique, elle, ne change plus. L'algorithme \textit{Policy Iteration} sépare le problème en deux étapes distinctes.
 
 \begin{enumerate}
-    \item \textbf{Policy Evaluation (Évaluation)} : On fixe la politique $\pi$. On calcule sa valeur $V^\pi(s)$ précise pour tous les états (en résolvant le système d'équations de Bellman).
-    \item \textbf{Policy Improvement (Amélioration)} : On regarde les valeurs calculées. Pour chaque état, on change la politique pour choisir l'action qui donne le meilleur résultat immédiat (Greedy) selon $V^\pi$. $\pi_{new}(s) = \arg\max_a Q^\pi(s,a)$.
+    \item \textbf{Policy Evaluation} : On fixe une politique $\pi$. On calcule $V^\pi(s)$ précisement (résolution de système linéaire ou itérations simplifiées).
+    \[ V_{k+1}(s) = \sum_{s'} P(s'|s,\pi(s)) [R + \gamma V_k(s')] \]
+    
+    \item \textbf{Policy Improvement} : On rend la politique "gloutonne" (greedy) par rapport aux valeurs calculées.
+    \[ \pi_{new}(s) = \arg\max_{a} \sum_{s'} P(s'|s,a) [R + \gamma V^\pi(s')] \]
 \end{enumerate}
-On boucle : Évaluer $\to$ Améliorer $\to$ Évaluer $\to$ Améliorer... Jusqu'à ce que la politique ne change plus.
 
-\section{Algorithme 2 : Value Iteration}
-Parfois, évaluer parfaitement la politique (étape 1) est trop long. L'algorithme \textit{Value Iteration} raccourcit le processus en combinant les deux étapes.
-Au lieu d'attendre l'évaluation complète, on met à jour la valeur $V(s)$ en utilisant directement l'équation d'optimalité de Bellman (avec le $\max$) à chaque étape.
+On répète ces deux étapes jusqu'à ce que la politique ne change plus ($\pi_{new} = \pi_{old}$).
 
-\[ V_{k+1}(s) \leftarrow \max_a \sum_{s', r} P(s'|s,a) [r + \gamma V_k(s')] \]
+\begin{intuition}{Différence VI vs PI}
+\begin{itemize}
+    \item \textbf{Value Iteration (VI)} : Une seule étape de "max" à chaque mise à jour. C'est plus "brutal", on met tout à jour en même temps.
+    \item \textbf{Policy Iteration (PI)} : On prend le temps d'évaluer parfaitement une stratégie avant de la changer. Converge souvent en moins d'itérations, mais chaque itération est plus coûteuse.
+\end{itemize}
+\end{intuition}
 
-C'est souvent plus rapide et plus simple à implémenter.
+\section{Note Technique pour le TP : Accéder à la Dynamique $P$}
+Pour implémenter ces algorithmes sur un ordinateur (ex: avec la librairie \texttt{gymnasium} et l'environnement \texttt{FrozenLake}), vous avez besoin d'accéder concrètement aux probabilités de transition $P(s'|s,a)$.
+
+Dans \texttt{FrozenLake}, cet accès est donné par l'attribut \texttt{env.P}.
+C'est un dictionnaire de dictionnaires : \texttt{env.P[state][action]} qui retourne une liste de tuples.
+
+\begin{lstlisting}[language=Python]
+# Structure de env.P[state][action] :
+# C'est une liste de tuples (probabilite, etat_suivant, recompense, termine)
+
+transitions = env.P[state][action]
+
+for prob, next_state, reward, terminated in transitions:
+    # prob       -> P(s'|s,a)
+    # next_state -> s'
+    # reward     -> R(s,a,s') (Attention : parfois r est donne, parfois il depend de l'arrivee)
+\end{lstlisting}
+
+C'est sur cette liste que vous devrez itérer pour calculer vos sommes mathématiques :
+\[ \sum_{s'} P(s'|s,a) [\dots] \quad \longrightarrow \quad \texttt{for prob, ... in env.P[s][a]: ...} \]
 
 \chapter{Résolution "Model-Free" (Apprentissage Réel)}
 
@@ -303,30 +374,30 @@ Voici une implémentation complète de Q-Learning sur l'environnement "FrozenLak
 import gymnasium as gym
 import numpy as np
 
-# 1. Création de l'environnement
-# FrozenLake : Une grille glissante. But : aller de S à G sans tomber dans les trous H.
+# 1. Creation de l'environnement
+# FrozenLake : Une grille glissante. But : aller de S a G sans tomber dans les trous H.
 # is_slippery=True rend l'environnement stochastique (transitions incertaines)
 env = gym.make("FrozenLake-v1", is_slippery=True)
 
 # 2. Initialisation de la Q-Table
-# Une matrice de taille [Nb_Etats, Nb_Actions] initialisée à 0
+# Une matrice de taille [Nb_Etats, Nb_Actions] initialisee a 0
 q_table = np.zeros((env.observation_space.n, env.action_space.n))
 
-# 3. Hyperparamètres
+# 3. Hyperparametres
 alpha = 0.1        # Learning Rate (Vitesse d'apprentissage)
 gamma = 0.99       # Discount Factor (Importance du futur)
-epsilon = 1.0      # Exploration Rate (100% aléatoire au début)
-epsilon_decay = 0.995 # On réduit l'exploration de 0.5% à chaque épisode
+epsilon = 1.0      # Exploration Rate (100% aleatoire au debut)
+epsilon_decay = 0.995 # On reduit l'exploration de 0.5% a chaque episode
 min_epsilon = 0.01
 
 episodes = 2000
 
 for episode in range(episodes):
-    state, info = env.reset() # On remet l'agent au départ
+    state, info = env.reset() # On remet l'agent au depart
     done = False
     
     while not done:
-        # --- Stratégie Epsilon-Greedy ---
+        # --- Strategie Epsilon-Greedy ---
         if np.random.rand() < epsilon:
             action = env.action_space.sample() # Exploration (Hasard)
         else:
@@ -335,14 +406,14 @@ for episode in range(episodes):
         # --- Interaction avec l'environnement ---
         next_state, reward, terminated, truncated, info = env.step(action)
         
-        # --- Mise à jour Q-Learning (Formule Mathématique) ---
-        # On regarde quelle est la valeur MAX possible au prochain état
+        # --- Mise a jour Q-Learning (Formule Mathematique) ---
+        # On regarde quelle est la valeur MAX possible au prochain etat
         max_next_q = np.max(q_table[next_state, :])
         
         # La valeur actuelle
         current_q = q_table[state, action]
         
-        # Le calcul de l'erreur et la mise à jour
+        # Le calcul de l'erreur et la mise a jour
         # Q(s,a) = Q(s,a) + alpha * (Reward + gamma * max(Q(s')) - Q(s,a))
         new_q = current_q + alpha * (reward + gamma * max_next_q - current_q)
         
@@ -352,10 +423,10 @@ for episode in range(episodes):
         state = next_state
         done = terminated or truncated
 
-    # À la fin de l'épisode, on réduit epsilon
+    # A la fin de l'episode, on reduit epsilon
     epsilon = max(min_epsilon, epsilon * epsilon_decay)
 
-print("Apprentissage terminé !")
+print("Apprentissage termine !")
 print(q_table)
 \end{lstlisting}
 
